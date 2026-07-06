@@ -12,6 +12,7 @@ const STORAGE_KEY = "easy-invoice-local-docs";
 export type LocalDocument = DbDocument & {
   line_items: DbLineItem[];
   business_id?: string;
+  show_due_info?: boolean | null;
 };
 
 function loadAll(): LocalDocument[] {
@@ -81,8 +82,16 @@ export function saveLocalDocument(
     buyer_address: form.buyer_address,
     buyer_email: form.buyer_email,
     valid_until: form.valid_until ?? null,
-    due_date: form.due_date ?? null,
-    payment_terms: form.payment_terms ?? null,
+    due_date:
+      form.kind === "invoice" && form.show_due_info !== true
+        ? null
+        : (form.due_date ?? null),
+    payment_terms:
+      form.kind === "invoice" && form.show_due_info !== true
+        ? null
+        : (form.payment_terms ?? null),
+    show_due_info:
+      form.kind === "invoice" ? (form.show_due_info ?? false) : null,
     paid_at: form.paid_at ?? null,
     payment_method: form.payment_method ?? null,
     amount_paid: form.amount_paid ?? null,
@@ -99,7 +108,13 @@ export function saveLocalDocument(
       id: crypto.randomUUID(),
       document_id: id ?? "",
       sort_order: i,
-      ...item,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      tax_rate_percent: item.tax_rate_percent,
+      discount_percent: item.discount_percent,
+      period_month: item.period_month ?? null,
+      period_year: item.period_year ?? null,
     })),
   };
 
@@ -119,7 +134,7 @@ export function deleteLocalDocument(id: string) {
 }
 
 export function formFromLocal(doc: LocalDocument): DocumentFormData {
-  return {
+  const form: DocumentFormData = {
     kind: doc.kind,
     number: doc.number,
     issue_date: doc.issue_date,
@@ -138,12 +153,30 @@ export function formFromLocal(doc: LocalDocument): DocumentFormData {
     source_document_id: doc.source_document_id ?? undefined,
     line_items: doc.line_items
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map(({ description, quantity, unit_price, tax_rate_percent, discount_percent }) => ({
-        description,
-        quantity: Number(quantity),
-        unit_price: Number(unit_price),
-        tax_rate_percent: Number(tax_rate_percent),
-        discount_percent: Number(discount_percent),
-      })),
+      .map(
+        ({
+          description,
+          quantity,
+          unit_price,
+          tax_rate_percent,
+          discount_percent,
+          period_month,
+          period_year,
+        }) => ({
+          description,
+          quantity: Number(quantity),
+          unit_price: Number(unit_price),
+          tax_rate_percent: Number(tax_rate_percent),
+          discount_percent: Number(discount_percent),
+          period_month: period_month ?? undefined,
+          period_year: period_year ?? undefined,
+        }),
+      ),
   };
+
+  if (doc.kind === "invoice") {
+    form.show_due_info = doc.show_due_info ?? doc.due_date != null;
+  }
+
+  return form;
 }

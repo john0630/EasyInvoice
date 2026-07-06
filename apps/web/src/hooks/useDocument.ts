@@ -117,8 +117,14 @@ export function useDocumentOps(
         buyer_address: form.buyer_address,
         buyer_email: form.buyer_email,
         valid_until: form.valid_until ?? null,
-        due_date: form.due_date ?? null,
-        payment_terms: form.payment_terms ?? null,
+        due_date:
+          form.kind === "invoice" && form.show_due_info !== true
+            ? null
+            : (form.due_date ?? null),
+        payment_terms:
+          form.kind === "invoice" && form.show_due_info !== true
+            ? null
+            : (form.payment_terms ?? null),
         paid_at: form.paid_at ?? null,
         payment_method: form.payment_method ?? null,
         amount_paid: form.amount_paid ?? totals.grand_total,

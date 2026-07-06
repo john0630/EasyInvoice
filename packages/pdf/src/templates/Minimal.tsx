@@ -5,7 +5,7 @@ import {
   View,
   StyleSheet,
 } from "@react-pdf/renderer";
-import { DOCUMENT_TITLES, formatMoney } from "@easy-invoice/shared";
+import { DOCUMENT_TITLES, formatMoney, formatLineItemDescription } from "@easy-invoice/shared";
 import type { PdfDocumentData } from "../types";
 const styles = StyleSheet.create({
   page: { padding: 48, fontSize: 10, fontFamily: "Helvetica", color: "#333" },
@@ -38,7 +38,7 @@ export function MinimalPdf({ data }: { data: PdfDocumentData }) {
 
         {data.line_items.map((item, i) => (
           <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-            <Text>{item.description}</Text>
+            <Text>{formatLineItemDescription(item)}</Text>
             <Text>{money(item.quantity * item.unit_price)}</Text>
           </View>
         ))}

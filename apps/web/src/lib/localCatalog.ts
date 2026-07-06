@@ -1,9 +1,11 @@
 import type { DocumentFormData, LineItemInput } from "@easy-invoice/shared";
+import { hasNotesContent, notesToPlainText, previousMonthPeriod } from "@easy-invoice/shared";
 
 const BUSINESSES_KEY = "easy-invoice-local-businesses";
 const ACTIVE_BUSINESS_KEY = "easy-invoice-local-active-business-id";
 const BUYERS_KEY = "easy-invoice-local-buyers";
 const LINE_ITEMS_KEY = "easy-invoice-local-line-items";
+const NOTES_KEY = "easy-invoice-local-notes";
 const LEGACY_SETTINGS_KEY = "easy-invoice-org-settings";
 
 export type SavedBusiness = {
@@ -27,6 +29,11 @@ export type SavedLineItemPreset = {
   description: string;
   unit_price: number;
   tax_rate_percent: number;
+};
+
+export type SavedNotePreset = {
+  id: string;
+  text: string;
 };
 
 export type SellerInfo = {
@@ -209,6 +216,25 @@ export function upsertLineItemPreset(
   const desc = preset.description.trim();
   if (!desc) return null;
   const all = listLineItemPresets();
+
+  if (preset.id) {
+    const idx = all.findIndex((p) => p.id === preset.id);
+    if (idx >= 0) {
+      const saved: SavedLineItemPreset = {
+        id: preset.id,
+        description: desc,
+        unit_price: preset.unit_price,
+        tax_rate_percent: preset.tax_rate_percent,
+      };
+      all[idx] = saved;
+      writeJson(
+        LINE_ITEMS_KEY,
+        all.sort((a, b) => a.description.localeCompare(b.description)),
+      );
+      return saved;
+    }
+  }
+
   const existing = all.find(
     (p) => p.description.trim().toLowerCase() === desc.toLowerCase(),
   );
@@ -247,6 +273,58 @@ export function findLineItemPreset(description: string): SavedLineItemPreset | u
   return listLineItemPresets().find((p) => p.description.trim().toLowerCase() === key);
 }
 
+export function notePresetLabel(text: string, maxLength = 60): string {
+  const line = notesToPlainText(text).trim().split("\n")[0] ?? "";
+  if (line.length <= maxLength) return line;
+  return `${line.slice(0, maxLength - 1)}…`;
+}
+
+export function listNotePresets(): SavedNotePreset[] {
+  return readJson<SavedNotePreset[]>(NOTES_KEY, []);
+}
+
+export function upsertNotePreset(
+  text: string,
+  id?: string,
+): SavedNotePreset | null {
+  if (!hasNotesContent(text)) return null;
+  const trimmed = text.trim();
+  const all = listNotePresets();
+
+  if (id) {
+    const idx = all.findIndex((n) => n.id === id);
+    if (idx >= 0) {
+      const saved: SavedNotePreset = { id, text: trimmed };
+      all[idx] = saved;
+      writeJson(
+        NOTES_KEY,
+        all.sort((a, b) => notePresetLabel(a.text).localeCompare(notePresetLabel(b.text))),
+      );
+      return saved;
+    }
+  }
+
+  const existing = all.find((n) => n.text.trim() === trimmed);
+  const saved: SavedNotePreset = existing
+    ? { ...existing, text: trimmed }
+    : { id: id ?? crypto.randomUUID(), text: trimmed };
+  const idx = all.findIndex((n) => n.id === saved.id);
+  if (idx >= 0) all[idx] = saved;
+  else all.push(saved);
+  writeJson(
+    NOTES_KEY,
+    all.sort((a, b) => notePresetLabel(a.text).localeCompare(notePresetLabel(b.text))),
+  );
+  return saved;
+}
+
+export function deleteNotePreset(id: string) {
+  writeJson(
+    NOTES_KEY,
+    listNotePresets().filter((n) => n.id !== id),
+  );
+}
+
 export function recordDocumentCatalog(
   form: DocumentFormData,
   seller: SellerInfo,
@@ -276,16 +354,23 @@ export function recordDocumentCatalog(
       tax_rate_percent: item.tax_rate_percent,
     });
   }
+
+  if (hasNotesContent(form.notes)) {
+    upsertNotePreset(form.notes);
+  }
 }
 
 export function applyLineItemPreset(
   item: LineItemInput,
   preset: SavedLineItemPreset,
 ): LineItemInput {
+  const { period_month, period_year } = previousMonthPeriod();
   return {
     ...item,
     description: preset.description,
     unit_price: preset.unit_price,
     tax_rate_percent: preset.tax_rate_percent,
+    period_month,
+    period_year,
   };
 }

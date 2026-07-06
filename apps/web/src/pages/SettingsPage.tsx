@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { formatMoney } from "@easy-invoice/shared";
+import { formatAmount, hasNotesContent } from "@easy-invoice/shared";
+import { NotesContent } from "@/components/NotesContent";
+import { NotesEditor } from "@/components/editor/NotesEditor";
+import type { SavedLineItemPreset, SavedNotePreset } from "@/lib/localCatalog";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useLocalCatalog } from "@/hooks/useLocalCatalog";
@@ -17,6 +20,10 @@ export function SettingsPage() {
   const [form, setForm] = useState<Partial<OrganizationSettings>>({});
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"general" | "businesses" | "contacts">("general");
+  const [editingLineItemId, setEditingLineItemId] = useState<string | null>(null);
+  const [lineItemDraft, setLineItemDraft] = useState<SavedLineItemPreset | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => {
     if (settings) setForm(settings);
@@ -58,6 +65,63 @@ export function SettingsPage() {
   const inputClass =
     "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/30 text-sm";
 
+  const startEditLineItem = (preset: SavedLineItemPreset) => {
+    setEditingLineItemId(preset.id);
+    setLineItemDraft({ ...preset });
+  };
+
+  const cancelEditLineItem = () => {
+    setEditingLineItemId(null);
+    setLineItemDraft(null);
+  };
+
+  const saveLineItem = () => {
+    if (!lineItemDraft?.description.trim()) {
+      toast.error("Description is required");
+      return;
+    }
+    catalog.saveLineItemPreset(lineItemDraft);
+    cancelEditLineItem();
+    toast.success("Line item updated");
+  };
+
+  const deleteLineItem = (id: string) => {
+    if (!confirm("Delete this saved line item?")) return;
+    if (editingLineItemId === id) cancelEditLineItem();
+    catalog.removeLineItemPreset(id);
+    toast.success("Line item removed");
+  };
+
+  const startEditNote = (note: SavedNotePreset) => {
+    setEditingNoteId(note.id);
+    setNoteDraft(note.text);
+  };
+
+  const cancelEditNote = () => {
+    setEditingNoteId(null);
+    setNoteDraft("");
+  };
+
+  const saveNote = () => {
+    if (!editingNoteId) return;
+    if (!hasNotesContent(noteDraft)) {
+      toast.error("Note cannot be empty");
+      return;
+    }
+    catalog.updateNotePreset(editingNoteId, noteDraft);
+    cancelEditNote();
+    toast.success("Note updated");
+  };
+
+  const deleteNote = (id: string) => {
+    if (!confirm("Delete this saved note?")) return;
+    if (editingNoteId === id) cancelEditNote();
+    catalog.removeNotePreset(id);
+    toast.success("Note removed");
+  };
+
+  const actionButtonClass = "text-xs font-medium shrink-0";
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -70,16 +134,18 @@ export function SettingsPage() {
     ? [
         { key: "general" as const, label: "Defaults" },
         { key: "businesses" as const, label: "Businesses" },
-        { key: "contacts" as const, label: "Buyers & Items" },
+        { key: "contacts" as const, label: "Saved catalog" },
       ]
     : [{ key: "general" as const, label: "Business" }];
+
+  const currency = form.currency ?? DEFAULT_CURRENCY;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-2">Settings</h1>
       <p className="text-slate-500 text-sm mb-6">
         {localMode
-          ? "Manage defaults, saved businesses, buyers, and line items."
+          ? "Manage defaults, businesses, and saved buyers, line items, and notes used when creating documents."
           : "Default seller info appears on every new document."}
       </p>
 
@@ -256,6 +322,19 @@ export function SettingsPage() {
             </div>
           </div>
 
+          {localMode && (
+            <div className="pt-4 border-t border-slate-100 space-y-2">
+              <h3 className="text-sm font-semibold text-slate-700">Document editor</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Line items support multiline descriptions, an optional month and year
+                (shown on the invoice as{" "}
+                <span className="text-slate-600">Description (July 2026)</span>), and saved
+                description presets. Notes support rich text formatting and can be saved for
+                reuse from the document editor.
+              </p>
+            </div>
+          )}
+
           {isSupabaseConfigured && (
             <label className="block space-y-1 pt-4 border-t border-slate-100">
               <span className="text-sm font-medium text-slate-600">Logo</span>
@@ -379,8 +458,16 @@ export function SettingsPage() {
 
       {localMode && tab === "contacts" && (
         <div className="space-y-8">
+          <p className="text-sm text-slate-500">
+            Edit or delete entries saved from documents. Line item month and year are set per
+            document in the editor and are not stored here.
+          </p>
+
           <section>
-            <h2 className="font-semibold mb-3">Saved buyers</h2>
+            <h2 className="font-semibold mb-1">Saved buyers</h2>
+            <p className="text-xs text-slate-400 mb-3">
+              Pick from the buyer dropdown when creating a document.
+            </p>
             {catalog.buyers.length === 0 ? (
               <p className="text-sm text-slate-500">
                 Buyers are saved when you save a document with buyer details.
@@ -412,33 +499,185 @@ export function SettingsPage() {
           </section>
 
           <section>
-            <h2 className="font-semibold mb-3">Saved line items</h2>
+            <h2 className="font-semibold mb-1">Saved line items</h2>
+            <p className="text-xs text-slate-400 mb-3">
+              Stores description, price, and tax. Pick from the line item dropdown in the
+              document editor. Add an optional month and year on each row when invoicing for a
+              specific period.
+            </p>
             {catalog.lineItemPresets.length === 0 ? (
               <p className="text-sm text-slate-500">
-                Line item descriptions are saved when you save a document.
+                Saved when you save a document, or use &quot;Pick saved description&quot; on a
+                line item and save the document.
               </p>
             ) : (
               <div className="space-y-2">
-                {catalog.lineItemPresets.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{p.description}</p>
-                      <p className="text-slate-500">
-                        {formatMoney(p.unit_price, form.currency ?? DEFAULT_CURRENCY)} · Tax{" "}
-                        {p.tax_rate_percent}%
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => catalog.removeLineItemPreset(p.id)}
-                      className="text-xs text-red-400 hover:text-red-600"
+                {catalog.lineItemPresets.map((p) => {
+                  const isEditing = editingLineItemId === p.id;
+                  const draft = isEditing && lineItemDraft ? lineItemDraft : p;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm space-y-3"
                     >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+                      {isEditing ? (
+                        <>
+                          <textarea
+                            className={`${inputClass} min-h-[5rem] resize-y`}
+                            value={draft.description}
+                            rows={3}
+                            onChange={(e) =>
+                              setLineItemDraft({ ...draft, description: e.target.value })
+                            }
+                            placeholder="Description"
+                          />
+                          <div className="grid sm:grid-cols-2 gap-2">
+                            <label className="block space-y-1">
+                              <span className="text-xs text-slate-500">
+                                Price ({currency})
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                className={inputClass}
+                                value={draft.unit_price}
+                                onChange={(e) =>
+                                  setLineItemDraft({
+                                    ...draft,
+                                    unit_price: Number(e.target.value),
+                                  })
+                                }
+                              />
+                            </label>
+                            <label className="block space-y-1">
+                              <span className="text-xs text-slate-500">Tax %</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className={inputClass}
+                                value={draft.tax_rate_percent}
+                                onChange={(e) =>
+                                  setLineItemDraft({
+                                    ...draft,
+                                    tax_rate_percent: Number(e.target.value),
+                                  })
+                                }
+                              />
+                            </label>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={saveLineItem}
+                              className={`${actionButtonClass} text-brand hover:text-brand-dark`}
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditLineItem}
+                              className={`${actionButtonClass} text-slate-500 hover:text-slate-700`}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="font-medium whitespace-pre-line">{p.description}</p>
+                            <p className="text-slate-500 mt-1">
+                              Price ({currency}): {formatAmount(p.unit_price)} · Tax{" "}
+                              {p.tax_rate_percent}%
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEditLineItem(p)}
+                              className={`${actionButtonClass} text-brand hover:text-brand-dark`}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteLineItem(p.id)}
+                              className={`${actionButtonClass} text-red-400 hover:text-red-600`}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="font-semibold mb-1">Saved notes</h2>
+            <p className="text-xs text-slate-400 mb-3">
+              Rich text notes saved from the document editor. Pick from the notes dropdown or
+              use &quot;Save note&quot; while editing a document.
+            </p>
+            {catalog.notePresets.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No saved notes yet. Use &quot;Save note&quot; on a document or save a document
+                that includes notes.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {catalog.notePresets.map((n) => {
+                  const isEditing = editingNoteId === n.id;
+
+                  return (
+                    <div
+                      key={n.id}
+                      className="bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm space-y-3"
+                    >
+                      {isEditing ? (
+                        <>
+                          <NotesEditor value={noteDraft} onChange={setNoteDraft} />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={saveNote}
+                              className={`${actionButtonClass} text-brand hover:text-brand-dark`}
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditNote}
+                              className={`${actionButtonClass} text-slate-500 hover:text-slate-700`}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <NotesContent notes={n.text} className="text-slate-600 line-clamp-3" />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEditNote(n)}
+                              className={`${actionButtonClass} text-brand hover:text-brand-dark`}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteNote(n.id)}
+                              className={`${actionButtonClass} text-red-400 hover:text-red-600`}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

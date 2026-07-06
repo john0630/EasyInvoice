@@ -20,6 +20,7 @@ import {
   businessToSeller,
   listBusinesses,
   type SavedBuyer,
+  type SavedNotePreset,
   type SellerInfo,
 } from "@/lib/localCatalog";
 import { getLocalDocument } from "@/lib/localStorage";
@@ -118,6 +119,16 @@ export function DocumentPage() {
         : f,
     );
     setDirty(true);
+  };
+
+  const handleSelectNote = (note: SavedNotePreset) => {
+    setForm((f) => (f ? { ...f, notes: note.text } : f));
+    setDirty(true);
+  };
+
+  const handleSaveNote = (text: string) => {
+    const saved = catalog.saveNote(text);
+    if (saved) toast.success("Note saved");
   };
 
   const handleSave = async () => {
@@ -220,6 +231,9 @@ export function DocumentPage() {
             buyers={localMode ? catalog.buyers : undefined}
             onSelectBuyer={localMode ? handleSelectBuyer : undefined}
             lineItemPresets={localMode ? catalog.lineItemPresets : undefined}
+            notePresets={localMode ? catalog.notePresets : undefined}
+            onSelectNote={localMode ? handleSelectNote : undefined}
+            onSaveNote={localMode ? handleSaveNote : undefined}
             nextNumberPreview={
               !form.number
                 ? previewDocumentNumber(settings, form.kind)

@@ -22,9 +22,17 @@ const base = {
 };
 
 describe("validateDocument", () => {
-  it("requires due_date for invoice", () => {
-    const result = validateDocument({ ...base, payment_terms: "Net 30" }, "invoice");
+  it("requires due_date when show_due_info is enabled", () => {
+    const result = validateDocument(
+      { ...base, show_due_info: true, payment_terms: "Net 30" },
+      "invoice",
+    );
     expect(result.success).toBe(false);
+  });
+
+  it("allows invoice without due_date when show_due_info is off", () => {
+    const result = validateDocument({ ...base }, "invoice");
+    expect(result.success).toBe(true);
   });
 
   it("passes valid invoice", () => {

@@ -5,7 +5,7 @@ import {
   View,
   StyleSheet,
 } from "@react-pdf/renderer";
-import { DOCUMENT_TITLES, formatMoney } from "@easy-invoice/shared";
+import { DOCUMENT_TITLES, formatMoney, formatLineItemDescription } from "@easy-invoice/shared";
 import type { PdfDocumentData } from "../types";
 
 const ACCENT = "#2563eb";
@@ -54,7 +54,7 @@ export function ModernPdf({ data }: { data: PdfDocumentData }) {
                 borderBottomColor: "#e2e8f0",
               }}
             >
-              <Text>{item.description}</Text>
+              <Text>{formatLineItemDescription(item)}</Text>
               <Text style={{ fontFamily: "Helvetica-Bold" }}>
                 {money(item.quantity * item.unit_price)}
               </Text>

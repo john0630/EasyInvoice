@@ -24,6 +24,7 @@ export interface PdfDocumentData {
   valid_until?: string;
   due_date?: string;
   payment_terms?: string;
+  show_due_info?: boolean;
   paid_at?: string;
   payment_method?: PaymentMethod;
   amount_paid?: number;

@@ -3,11 +3,16 @@ import type { DocumentFormData } from "@easy-invoice/shared";
 import { KIND_LABELS } from "@easy-invoice/shared";
 import { CURRENCIES } from "@/lib/localSettings";
 import { LineItemsTable } from "./LineItemsTable";
-import type {
-  SavedBusiness,
-  SavedBuyer,
-  SavedLineItemPreset,
-  SellerInfo,
+import { NotesEditor } from "./NotesEditor";
+import { Switch } from "@/components/Switch";
+import { hasNotesContent } from "@easy-invoice/shared";
+import {
+  notePresetLabel,
+  type SavedBusiness,
+  type SavedBuyer,
+  type SavedLineItemPreset,
+  type SavedNotePreset,
+  type SellerInfo,
 } from "@/lib/localCatalog";
 
 type Props = {
@@ -23,6 +28,9 @@ type Props = {
   buyers?: SavedBuyer[];
   onSelectBuyer?: (buyer: SavedBuyer) => void;
   lineItemPresets?: SavedLineItemPreset[];
+  notePresets?: SavedNotePreset[];
+  onSelectNote?: (note: SavedNotePreset) => void;
+  onSaveNote?: (text: string) => void;
   nextNumberPreview?: string;
 };
 
@@ -59,6 +67,9 @@ export function DocumentEditor({
   buyers = [],
   onSelectBuyer,
   lineItemPresets = [],
+  notePresets = [],
+  onSelectNote,
+  onSaveNote,
   nextNumberPreview,
 }: Props) {
   const patch = (p: Partial<DocumentFormData>) => onChange({ ...form, ...p });
@@ -72,6 +83,14 @@ export function DocumentEditor({
     if (!id) return;
     const buyer = buyers.find((b) => b.id === id);
     if (buyer) onSelectBuyer?.(buyer);
+  };
+
+  const handleNoteSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    if (!id) return;
+    const note = notePresets.find((n) => n.id === id);
+    if (note) onSelectNote?.(note);
+    e.target.value = "";
   };
 
   return (
@@ -273,22 +292,41 @@ export function DocumentEditor({
         </div>
 
         {form.kind === "invoice" && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Due Date">
-              <input
-                type="date"
-                className={inputClass}
-                value={form.due_date ?? ""}
-                onChange={(e) => patch({ due_date: e.target.value })}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium text-slate-700">
+                  Due date & payment terms
+                </p>
+                <p className="text-xs text-slate-400">
+                  Show on invoice preview and PDF
+                </p>
+              </div>
+              <Switch
+                label="Due date and payment terms"
+                checked={form.show_due_info === true}
+                onChange={(checked) => patch({ show_due_info: checked })}
               />
-            </Field>
-            <Field label="Payment Terms">
-              <input
-                className={inputClass}
-                value={form.payment_terms ?? ""}
-                onChange={(e) => patch({ payment_terms: e.target.value })}
-              />
-            </Field>
+            </div>
+            {form.show_due_info === true && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Due Date">
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={form.due_date ?? ""}
+                    onChange={(e) => patch({ due_date: e.target.value })}
+                  />
+                </Field>
+                <Field label="Payment Terms">
+                  <input
+                    className={inputClass}
+                    value={form.payment_terms ?? ""}
+                    onChange={(e) => patch({ payment_terms: e.target.value })}
+                  />
+                </Field>
+              </div>
+            )}
           </div>
         )}
 
@@ -353,15 +391,42 @@ export function DocumentEditor({
         lineItemPresets={localMode ? lineItemPresets : undefined}
       />
 
-      <Field label="Notes">
-        <textarea
-          className={inputClass}
-          rows={3}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+            Notes
+          </span>
+          {localMode && onSaveNote && (
+            <button
+              type="button"
+              onClick={() => onSaveNote(form.notes)}
+              disabled={!hasNotesContent(form.notes)}
+              className="text-xs text-brand font-medium hover:text-brand-dark disabled:opacity-40"
+            >
+              Save note
+            </button>
+          )}
+        </div>
+        {localMode && notePresets.length > 0 && onSelectNote && (
+          <select
+            className={inputClass}
+            defaultValue=""
+            onChange={handleNoteSelect}
+          >
+            <option value="">— Select saved note —</option>
+            {notePresets.map((n) => (
+              <option key={n.id} value={n.id}>
+                {notePresetLabel(n.text)}
+              </option>
+            ))}
+          </select>
+        )}
+        <NotesEditor
           value={form.notes}
-          onChange={(e) => patch({ notes: e.target.value })}
+          onChange={(notes) => patch({ notes })}
           placeholder="Thank you for your business!"
         />
-      </Field>
+      </div>
     </div>
   );
 }

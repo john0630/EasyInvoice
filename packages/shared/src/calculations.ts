@@ -37,3 +37,10 @@ export function formatMoney(amount: number, currency: string): string {
     return `${currency} ${amount.toFixed(2)}`;
   }
 }
+
+export function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}

@@ -19,3 +19,43 @@ body {
     background: white;
   }
 }
+
+.notes-editor-content p.is-editor-empty:first-child::before {
+  color: #94a3b8;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.notes-editor-content > * + * {
+  margin-top: 0.5rem;
+}
+
+.notes-content > * + * {
+  margin-top: 0.5rem;
+}
+
+.notes-content ul,
+.notes-content ol {
+  margin-left: 1.25rem;
+}
+
+.notes-content ul {
+  list-style-type: disc;
+}
+
+.notes-content ol {
+  list-style-type: decimal;
+}
+
+.notes-content blockquote {
+  border-left: 3px solid #e2e8f0;
+  color: #64748b;
+  padding-left: 0.75rem;
+}
+
+.notes-content h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}

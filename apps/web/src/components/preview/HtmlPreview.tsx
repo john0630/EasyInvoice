@@ -1,9 +1,14 @@
 import {
   calculateTotals,
   DOCUMENT_TITLES,
+  formatAmount,
+  formatDate,
+  formatLineItemDescription,
   formatMoney,
+  hasNotesContent,
   type DocumentFormData,
 } from "@easy-invoice/shared";
+import { NotesContent } from "@/components/NotesContent";
 
 type SellerInfo = {
   seller_name: string;
@@ -46,7 +51,7 @@ export function HtmlPreview({ form, seller }: Props) {
         <div className="text-right text-sm text-slate-500">
           <p>Issue Date</p>
           <p className="font-medium text-slate-800">
-            {new Date(form.issue_date).toLocaleDateString()}
+            {formatDate(form.issue_date)}
           </p>
         </div>
       </div>
@@ -74,8 +79,8 @@ export function HtmlPreview({ form, seller }: Props) {
           <tr className="bg-slate-50 text-slate-500 text-left">
             <th className="p-2 font-medium">Description</th>
             <th className="p-2 font-medium text-right">Qty</th>
-            <th className="p-2 font-medium text-right">Price</th>
-            <th className="p-2 font-medium text-right">Total</th>
+            <th className="p-2 font-medium text-right">Price ({form.currency})</th>
+            <th className="p-2 font-medium text-right">Total ({form.currency})</th>
           </tr>
         </thead>
         <tbody>
@@ -84,10 +89,12 @@ export function HtmlPreview({ form, seller }: Props) {
               item.quantity * item.unit_price * (1 - item.discount_percent / 100);
             return (
               <tr key={i} className="border-t border-slate-100">
-                <td className="p-2">{item.description || "—"}</td>
+                <td className="p-2 whitespace-pre-line">
+                  {formatLineItemDescription(item)}
+                </td>
                 <td className="p-2 text-right">{item.quantity}</td>
-                <td className="p-2 text-right">{money(item.unit_price)}</td>
-                <td className="p-2 text-right font-medium">{money(line)}</td>
+                <td className="p-2 text-right">{formatAmount(item.unit_price)}</td>
+                <td className="p-2 text-right font-medium">{formatAmount(line)}</td>
               </tr>
             );
           })}
@@ -125,10 +132,10 @@ export function HtmlPreview({ form, seller }: Props) {
         </div>
       </div>
 
-      {form.notes && (
+      {hasNotesContent(form.notes) && (
         <div className="mt-8 pt-4 border-t border-slate-100 text-sm text-slate-600">
           <p className="text-xs uppercase text-slate-400 mb-1">Notes</p>
-          <p className="whitespace-pre-line">{form.notes}</p>
+          <NotesContent notes={form.notes} />
         </div>
       )}
     </div>
@@ -137,11 +144,12 @@ export function HtmlPreview({ form, seller }: Props) {
 
 function KindMeta({ form }: { form: DocumentFormData }) {
   if (form.kind === "invoice") {
+    if (form.show_due_info !== true) return null;
     return (
       <div className="mb-4 text-sm text-slate-600">
         {form.due_date && (
           <p>
-            Due: {new Date(form.due_date).toLocaleDateString()}
+            Due: {formatDate(form.due_date)}
             {form.payment_terms ? ` · ${form.payment_terms}` : ""}
           </p>
         )}

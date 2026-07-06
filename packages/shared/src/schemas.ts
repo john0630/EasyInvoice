@@ -7,6 +7,8 @@ const lineItemSchema = z.object({
   unit_price: z.number().min(0),
   tax_rate_percent: z.number().min(0).max(100),
   discount_percent: z.number().min(0).max(100),
+  period_month: z.number().int().min(1).max(12).optional(),
+  period_year: z.number().int().min(1900).max(2100).optional(),
 });
 
 const baseDocumentSchema = z.object({
@@ -30,8 +32,9 @@ const proformaSchema = baseDocumentSchema.extend({
 
 const invoiceSchema = baseDocumentSchema.extend({
   kind: z.literal("invoice"),
-  due_date: z.string().min(1, "Due date is required"),
-  payment_terms: z.string(),
+  show_due_info: z.boolean().optional(),
+  due_date: z.string().optional(),
+  payment_terms: z.string().optional(),
 });
 
 const receiptSchema = baseDocumentSchema.extend({
@@ -42,11 +45,17 @@ const receiptSchema = baseDocumentSchema.extend({
   source_document_id: z.string().uuid().optional().or(z.literal("")),
 });
 
-export const documentSchema = z.discriminatedUnion("kind", [
-  proformaSchema,
-  invoiceSchema,
-  receiptSchema,
-]);
+export const documentSchema = z
+  .discriminatedUnion("kind", [proformaSchema, invoiceSchema, receiptSchema])
+  .superRefine((data, ctx) => {
+    if (data.kind === "invoice" && data.show_due_info === true && !data.due_date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Due date is required",
+        path: ["due_date"],
+      });
+    }
+  });
 
 export function validateDocument(data: unknown, kind: DocumentKind) {
   const withKind = { ...(data as object), kind };

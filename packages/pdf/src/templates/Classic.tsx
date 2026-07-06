@@ -8,6 +8,10 @@ import {
 import {
   DOCUMENT_TITLES,
   formatMoney,
+  formatAmount,
+  notesToPlainText,
+  hasNotesContent,
+  formatLineItemDescription,
   type DocumentKind,
 } from "@easy-invoice/shared";
 import type { PdfDocumentData } from "../types";
@@ -33,18 +37,16 @@ const styles = StyleSheet.create({
   grandTotal: { fontFamily: "Helvetica-Bold", fontSize: 12, marginTop: 4 },
 });
 
+import { formatDate as formatDocumentDate } from "@easy-invoice/shared";
+
 function formatDate(d?: string) {
-  if (!d) return "";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return d ? formatDocumentDate(d) : "";
 }
 
 export function ClassicPdf({ data }: { data: PdfDocumentData }) {
   const title = DOCUMENT_TITLES[data.kind];
   const money = (n: number) => formatMoney(n, data.currency);
+  const amount = (n: number) => formatAmount(n);
 
   return (
     <Document>
@@ -83,17 +85,17 @@ export function ClassicPdf({ data }: { data: PdfDocumentData }) {
           <View style={[styles.row, { backgroundColor: "#f5f5f5", fontFamily: "Helvetica-Bold" }]}>
             <Text style={styles.colDesc}>Description</Text>
             <Text style={styles.colNum}>Qty</Text>
-            <Text style={styles.colNum}>Price</Text>
-            <Text style={styles.colNum}>Total</Text>
+            <Text style={styles.colNum}>Price ({data.currency})</Text>
+            <Text style={styles.colNum}>Total ({data.currency})</Text>
           </View>
           {data.line_items.map((item, i) => {
             const lineTotal = item.quantity * item.unit_price * (1 - item.discount_percent / 100);
             return (
               <View key={i} style={styles.row}>
-                <Text style={styles.colDesc}>{item.description || "—"}</Text>
+                <Text style={styles.colDesc}>{formatLineItemDescription(item)}</Text>
                 <Text style={styles.colNum}>{item.quantity}</Text>
-                <Text style={styles.colNum}>{money(item.unit_price)}</Text>
-                <Text style={styles.colNum}>{money(lineTotal)}</Text>
+                <Text style={styles.colNum}>{amount(item.unit_price)}</Text>
+                <Text style={styles.colNum}>{amount(lineTotal)}</Text>
               </View>
             );
           })}
@@ -124,10 +126,10 @@ export function ClassicPdf({ data }: { data: PdfDocumentData }) {
           </View>
         </View>
 
-        {data.notes ? (
+        {hasNotesContent(data.notes) ? (
           <View style={{ marginTop: 24 }}>
             <Text style={styles.label}>NOTES</Text>
-            <Text>{data.notes}</Text>
+            <Text>{notesToPlainText(data.notes)}</Text>
           </View>
         ) : null}
       </Page>
@@ -145,6 +147,7 @@ function KindMeta({
   formatDate: (d?: string) => string;
 }) {
   if (kind === "invoice") {
+    if (data.show_due_info !== true) return null;
     return (
       <View style={{ marginBottom: 16 }}>
         <Text>Due Date: {formatDate(data.due_date)}</Text>

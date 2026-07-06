@@ -1,4 +1,5 @@
 import type { DocumentFormData, DocumentKind } from "@easy-invoice/shared";
+import { previousMonthPeriod } from "@easy-invoice/shared";
 import type { OrganizationSettings } from "./supabase";
 import { DEFAULT_CURRENCY } from "./localSettings";
 
@@ -7,12 +8,15 @@ export function today(): string {
 }
 
 export function defaultLineItem(taxRate = 0) {
+  const { period_month, period_year } = previousMonthPeriod();
   return {
     description: "",
     quantity: 1,
     unit_price: 0,
     tax_rate_percent: taxRate,
     discount_percent: 0,
+    period_month,
+    period_year,
   };
 }
 
@@ -41,6 +45,7 @@ export function createDefaultDocument(
     due.setDate(due.getDate() + 30);
     return {
       ...base,
+      show_due_info: false,
       due_date: due.toISOString().slice(0, 10),
       payment_terms: "Net 30",
     };

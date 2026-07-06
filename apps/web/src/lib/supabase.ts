@@ -46,6 +46,8 @@ export type DbLineItem = {
   unit_price: number;
   tax_rate_percent: number;
   discount_percent: number;
+  period_month: number | null;
+  period_year: number | null;
 };
 
 export type OrganizationSettings = {

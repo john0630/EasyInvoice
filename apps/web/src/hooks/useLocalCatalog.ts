@@ -6,17 +6,22 @@ import {
   deleteBusiness,
   deleteBuyer,
   deleteLineItemPreset,
+  deleteNotePreset,
   getActiveBusiness,
   getActiveBusinessId,
   listBusinesses,
   listBuyers,
   listLineItemPresets,
+  listNotePresets,
   recordDocumentCatalog,
   setActiveBusinessId,
   upsertBusiness,
+  upsertLineItemPreset,
+  upsertNotePreset,
   type SavedBusiness,
   type SavedBuyer,
   type SavedLineItemPreset,
+  type SavedNotePreset,
   type SellerInfo,
 } from "@/lib/localCatalog";
 
@@ -25,12 +30,14 @@ export function useLocalCatalog() {
   const [activeBusinessId, setActiveId] = useState("");
   const [buyers, setBuyers] = useState<SavedBuyer[]>([]);
   const [lineItemPresets, setLineItemPresets] = useState<SavedLineItemPreset[]>([]);
+  const [notePresets, setNotePresets] = useState<SavedNotePreset[]>([]);
 
   const refresh = useCallback(() => {
     setBusinesses(listBusinesses());
     setActiveId(getActiveBusinessId());
     setBuyers(listBuyers());
     setLineItemPresets(listLineItemPresets());
+    setNotePresets(listNotePresets());
   }, []);
 
   useEffect(() => {
@@ -90,6 +97,39 @@ export function useLocalCatalog() {
     [refresh],
   );
 
+  const saveLineItemPreset = useCallback(
+    (preset: SavedLineItemPreset) => {
+      upsertLineItemPreset(preset);
+      refresh();
+    },
+    [refresh],
+  );
+
+  const saveNote = useCallback(
+    (text: string) => {
+      const saved = upsertNotePreset(text);
+      refresh();
+      return saved;
+    },
+    [refresh],
+  );
+
+  const removeNotePreset = useCallback(
+    (id: string) => {
+      deleteNotePreset(id);
+      refresh();
+    },
+    [refresh],
+  );
+
+  const updateNotePreset = useCallback(
+    (id: string, text: string) => {
+      upsertNotePreset(text, id);
+      refresh();
+    },
+    [refresh],
+  );
+
   const recordFromDocument = useCallback(
     (form: DocumentFormData, sellerInfo: SellerInfo) => {
       if (!activeBusinessId) return;
@@ -106,12 +146,17 @@ export function useLocalCatalog() {
     seller,
     buyers,
     lineItemPresets,
+    notePresets,
     selectBusiness,
     createBusiness,
     saveBusiness,
     removeBusiness,
     removeBuyer,
     removeLineItemPreset,
+    saveLineItemPreset,
+    saveNote,
+    removeNotePreset,
+    updateNotePreset,
     recordFromDocument,
     refresh,
   };
