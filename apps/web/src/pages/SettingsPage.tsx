@@ -250,76 +250,85 @@ export function SettingsPage() {
 
           <div className="pt-4 border-t border-slate-100 space-y-3">
             <h3 className="text-sm font-semibold text-slate-700">Document numbering</h3>
-            <p className="text-xs text-slate-400">
-              Prefix and next number used when a document number is left blank.
-            </p>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Invoice prefix</span>
-                <input
-                  className={inputClass}
-                  value={form.invoice_prefix ?? "INV"}
-                  onChange={(e) => setForm({ ...form, invoice_prefix: e.target.value })}
-                  placeholder="INV"
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Proforma prefix</span>
-                <input
-                  className={inputClass}
-                  value={form.proforma_prefix ?? "PRO"}
-                  onChange={(e) => setForm({ ...form, proforma_prefix: e.target.value })}
-                  placeholder="PRO"
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Receipt prefix</span>
-                <input
-                  className={inputClass}
-                  value={form.receipt_prefix ?? "RCP"}
-                  onChange={(e) => setForm({ ...form, receipt_prefix: e.target.value })}
-                  placeholder="RCP"
-                />
-              </label>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Next invoice #</span>
-                <input
-                  type="number"
-                  min={1}
-                  className={inputClass}
-                  value={form.next_invoice_number ?? 1}
-                  onChange={(e) =>
-                    setForm({ ...form, next_invoice_number: Number(e.target.value) })
-                  }
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Next proforma #</span>
-                <input
-                  type="number"
-                  min={1}
-                  className={inputClass}
-                  value={form.next_proforma_number ?? 1}
-                  onChange={(e) =>
-                    setForm({ ...form, next_proforma_number: Number(e.target.value) })
-                  }
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Next receipt #</span>
-                <input
-                  type="number"
-                  min={1}
-                  className={inputClass}
-                  value={form.next_receipt_number ?? 1}
-                  onChange={(e) =>
-                    setForm({ ...form, next_receipt_number: Number(e.target.value) })
-                  }
-                />
-              </label>
-            </div>
+            {localMode ? (
+              <p className="text-xs text-slate-400">
+                Invoice, proforma, and receipt prefixes and counters are configured
+                separately for each business under the Businesses tab.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-slate-400">
+                  Prefix and next number used when a document number is left blank.
+                </p>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium text-slate-600">Invoice prefix</span>
+                    <input
+                      className={inputClass}
+                      value={form.invoice_prefix ?? "INV"}
+                      onChange={(e) => setForm({ ...form, invoice_prefix: e.target.value })}
+                      placeholder="INV"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium text-slate-600">Proforma prefix</span>
+                    <input
+                      className={inputClass}
+                      value={form.proforma_prefix ?? "PRO"}
+                      onChange={(e) => setForm({ ...form, proforma_prefix: e.target.value })}
+                      placeholder="PRO"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium text-slate-600">Receipt prefix</span>
+                    <input
+                      className={inputClass}
+                      value={form.receipt_prefix ?? "RCP"}
+                      onChange={(e) => setForm({ ...form, receipt_prefix: e.target.value })}
+                      placeholder="RCP"
+                    />
+                  </label>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium text-slate-600">Next invoice #</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputClass}
+                      value={form.next_invoice_number ?? 1}
+                      onChange={(e) =>
+                        setForm({ ...form, next_invoice_number: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium text-slate-600">Next proforma #</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputClass}
+                      value={form.next_proforma_number ?? 1}
+                      onChange={(e) =>
+                        setForm({ ...form, next_proforma_number: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium text-slate-600">Next receipt #</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputClass}
+                      value={form.next_receipt_number ?? 1}
+                      onChange={(e) =>
+                        setForm({ ...form, next_receipt_number: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                </div>
+              </>
+            )}
           </div>
 
           {localMode && (
@@ -448,6 +457,90 @@ export function SettingsPage() {
                   catalog.saveBusiness({ ...b, tax_id: e.target.value })
                 }
               />
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  Document numbering
+                </p>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-slate-500">Invoice prefix</span>
+                    <input
+                      className={inputClass}
+                      value={b.invoice_prefix}
+                      onChange={(e) =>
+                        catalog.saveBusiness({ ...b, invoice_prefix: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-slate-500">Proforma prefix</span>
+                    <input
+                      className={inputClass}
+                      value={b.proforma_prefix}
+                      onChange={(e) =>
+                        catalog.saveBusiness({ ...b, proforma_prefix: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-slate-500">Receipt prefix</span>
+                    <input
+                      className={inputClass}
+                      value={b.receipt_prefix}
+                      onChange={(e) =>
+                        catalog.saveBusiness({ ...b, receipt_prefix: e.target.value })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-slate-500">Next invoice #</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputClass}
+                      value={b.next_invoice_number}
+                      onChange={(e) =>
+                        catalog.saveBusiness({
+                          ...b,
+                          next_invoice_number: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-slate-500">Next proforma #</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputClass}
+                      value={b.next_proforma_number}
+                      onChange={(e) =>
+                        catalog.saveBusiness({
+                          ...b,
+                          next_proforma_number: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-slate-500">Next receipt #</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputClass}
+                      value={b.next_receipt_number}
+                      onChange={(e) =>
+                        catalog.saveBusiness({
+                          ...b,
+                          next_receipt_number: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
               {b.id === catalog.activeBusinessId && (
                 <span className="text-xs text-brand">Active business</span>
               )}

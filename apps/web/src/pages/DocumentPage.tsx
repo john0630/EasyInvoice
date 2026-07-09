@@ -13,6 +13,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useLocalCatalog } from "@/hooks/useLocalCatalog";
 import { useDocumentOps } from "@/hooks/useDocument";
 import { createDefaultDocument } from "@/lib/documentDefaults";
+import { previewBusinessDocumentNumber } from "@/lib/localCatalog";
 import { previewDocumentNumber } from "@/lib/localSettings";
 import { buildPdfFilename, downloadPdf } from "@/lib/downloadPdf";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -236,7 +237,14 @@ export function DocumentPage() {
             onSaveNote={localMode ? handleSaveNote : undefined}
             nextNumberPreview={
               !form.number
-                ? previewDocumentNumber(settings, form.kind)
+                ? localMode
+                  ? previewBusinessDocumentNumber(
+                      catalog.businesses.find(
+                        (b) => b.id === catalog.activeBusinessId,
+                      ) ?? catalog.activeBusiness,
+                      form.kind,
+                    )
+                  : previewDocumentNumber(settings, form.kind)
                 : undefined
             }
           />

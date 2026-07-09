@@ -1,11 +1,16 @@
 import type { DocumentFormData } from "@easy-invoice/shared";
 import { calculateTotals } from "@easy-invoice/shared";
-import type { DbDocument, DbLineItem, OrganizationSettings } from "./supabase";
+import type { DbDocument, DbLineItem } from "./supabase";
 import {
   assignLocalDocumentNumber,
   loadLocalSettings,
   saveLocalSettings,
 } from "./localSettings";
+import {
+  assignBusinessDocumentNumber,
+  getBusinessById,
+  upsertBusiness,
+} from "./localCatalog";
 
 const STORAGE_KEY = "easy-invoice-local-docs";
 
@@ -49,21 +54,27 @@ export function saveLocalDocument(
   },
   id?: string,
   businessId?: string,
-  settings?: OrganizationSettings | null,
 ): LocalDocument {
   const totals = calculateTotals(form.line_items);
   const now = new Date().toISOString();
   const all = loadAll();
 
-  const orgSettings = settings ?? loadLocalSettings();
   let number = form.number.trim();
-  let updatedSettings = orgSettings;
 
   if (!number && !id) {
-    const assigned = assignLocalDocumentNumber(orgSettings, form.kind);
-    number = assigned.number;
-    updatedSettings = assigned.settings;
-    saveLocalSettings(updatedSettings);
+    if (businessId) {
+      const business = getBusinessById(businessId);
+      if (business) {
+        const assigned = assignBusinessDocumentNumber(business, form.kind);
+        number = assigned.number;
+        upsertBusiness(assigned.business);
+      }
+    }
+    if (!number) {
+      const assigned = assignLocalDocumentNumber(loadLocalSettings(), form.kind);
+      number = assigned.number;
+      saveLocalSettings(assigned.settings);
+    }
   } else if (!number && id) {
     const existing = all.find((d) => d.id === id);
     number = existing?.number ?? "";
@@ -96,6 +107,7 @@ export function saveLocalDocument(
     payment_method: form.payment_method ?? null,
     amount_paid: form.amount_paid ?? null,
     source_document_id: form.source_document_id ?? null,
+    import_source: form.import_source ?? null,
     subtotal: totals.subtotal,
     tax_total: totals.tax_total,
     discount_total: totals.discount_total,
@@ -133,6 +145,11 @@ export function deleteLocalDocument(id: string) {
   saveAll(loadAll().filter((d) => d.id !== id));
 }
 
+export function deleteLocalDocuments(ids: string[]) {
+  const remove = new Set(ids);
+  saveAll(loadAll().filter((d) => !remove.has(d.id)));
+}
+
 export function formFromLocal(doc: LocalDocument): DocumentFormData {
   const form: DocumentFormData = {
     kind: doc.kind,
@@ -151,6 +168,7 @@ export function formFromLocal(doc: LocalDocument): DocumentFormData {
     payment_method: (doc.payment_method as DocumentFormData["payment_method"]) ?? undefined,
     amount_paid: doc.amount_paid ?? undefined,
     source_document_id: doc.source_document_id ?? undefined,
+    import_source: (doc.import_source as DocumentFormData["import_source"]) ?? undefined,
     line_items: doc.line_items
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(

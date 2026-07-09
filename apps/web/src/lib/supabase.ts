@@ -28,6 +28,7 @@ export type DbDocument = {
   payment_method: string | null;
   amount_paid: number | null;
   source_document_id: string | null;
+  import_source: string | null;
   subtotal: number;
   tax_total: number;
   discount_total: number;

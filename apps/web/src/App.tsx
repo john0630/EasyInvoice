@@ -6,6 +6,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { DocumentsPage } from "@/pages/DocumentsPage";
 import { DocumentPage } from "@/pages/DocumentPage";
+import { ImportPage } from "@/pages/ImportPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { TeamPage } from "@/pages/TeamPage";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -18,6 +19,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/documents/import" element={<ImportPage />} />
           <Route path="/documents/new/:kind" element={<DocumentPage />} />
           <Route path="/documents/:id" element={<DocumentPage />} />
           <Route path="/settings" element={<SettingsPage />} />

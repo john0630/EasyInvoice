@@ -9,16 +9,28 @@ export function buildPdfFilename(documentNumber: string, issueDate: string): str
   return `${safeNumber}-${safeDate}.pdf`;
 }
 
-export async function downloadPdf(  templateId: TemplateId,
+export async function renderPdfBlob(
+  templateId: TemplateId,
   data: PdfDocumentData,
-  filename: string,
-): Promise<void> {
+): Promise<Blob> {
   const doc = getPdfDocument(templateId, data) as ReactElement<DocumentProps>;
-  const blob = await pdf(doc).toBlob();
+  return pdf(doc).toBlob();
+}
+
+export function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function downloadPdf(
+  templateId: TemplateId,
+  data: PdfDocumentData,
+  filename: string,
+): Promise<void> {
+  const blob = await renderPdfBlob(templateId, data);
+  triggerBlobDownload(blob, filename);
 }

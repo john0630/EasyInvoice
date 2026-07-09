@@ -7,15 +7,28 @@ export const CURRENCIES = ["MYR", "USD", "SGD", "EUR", "GBP", "AUD", "CAD", "CNY
 
 const LOCAL_SETTINGS_KEY = "easy-invoice-org-settings";
 
-export const defaultLocalSettings: OrganizationSettings = {
-  organization_id: "local",
-  currency: DEFAULT_CURRENCY,
+export type DocumentNumbering = {
+  invoice_prefix: string;
+  proforma_prefix: string;
+  receipt_prefix: string;
+  next_invoice_number: number;
+  next_proforma_number: number;
+  next_receipt_number: number;
+};
+
+export const defaultDocumentNumbering: DocumentNumbering = {
   invoice_prefix: "INV",
   proforma_prefix: "PRO",
   receipt_prefix: "RCP",
   next_invoice_number: 1,
   next_proforma_number: 1,
   next_receipt_number: 1,
+};
+
+export const defaultLocalSettings: OrganizationSettings = {
+  organization_id: "local",
+  currency: DEFAULT_CURRENCY,
+  ...defaultDocumentNumbering,
   default_tax_rate: 0,
   seller_name: "My Business",
   seller_address: "",
@@ -46,9 +59,13 @@ export function formatDocumentNumber(prefix: string, seq: number): string {
 }
 
 function prefixAndCounter(
-  settings: OrganizationSettings,
+  settings: DocumentNumbering,
   kind: DocumentKind,
-): { prefix: string; counterKey: keyof OrganizationSettings; next: number } {
+): {
+  prefix: string;
+  counterKey: keyof DocumentNumbering;
+  next: number;
+} {
   if (kind === "invoice") {
     return {
       prefix: settings.invoice_prefix,
@@ -70,8 +87,23 @@ function prefixAndCounter(
   };
 }
 
+export function assignDocumentNumber<T extends DocumentNumbering>(
+  settings: T,
+  kind: DocumentKind,
+): { number: string; settings: T } {
+  const { prefix, counterKey, next } = prefixAndCounter(settings, kind);
+  const number = formatDocumentNumber(prefix, next);
+  return {
+    number,
+    settings: {
+      ...settings,
+      [counterKey]: next + 1,
+    },
+  };
+}
+
 export function previewDocumentNumber(
-  settings: OrganizationSettings | null | undefined,
+  settings: DocumentNumbering | null | undefined,
   kind: DocumentKind,
 ): string {
   if (!settings) return "";
@@ -83,13 +115,5 @@ export function assignLocalDocumentNumber(
   settings: OrganizationSettings,
   kind: DocumentKind,
 ): { number: string; settings: OrganizationSettings } {
-  const { prefix, counterKey, next } = prefixAndCounter(settings, kind);
-  const number = formatDocumentNumber(prefix, next);
-  return {
-    number,
-    settings: {
-      ...settings,
-      [counterKey]: next + 1,
-    } as OrganizationSettings,
-  };
+  return assignDocumentNumber(settings, kind);
 }

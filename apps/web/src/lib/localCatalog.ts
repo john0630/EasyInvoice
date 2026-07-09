@@ -1,5 +1,12 @@
-import type { DocumentFormData, LineItemInput } from "@easy-invoice/shared";
+import type { DocumentFormData, DocumentKind, LineItemInput } from "@easy-invoice/shared";
 import { hasNotesContent, notesToPlainText, previousMonthPeriod } from "@easy-invoice/shared";
+import {
+  assignDocumentNumber,
+  defaultDocumentNumbering,
+  loadLocalSettings,
+  previewDocumentNumber,
+  type DocumentNumbering,
+} from "./localSettings";
 
 const BUSINESSES_KEY = "easy-invoice-local-businesses";
 const ACTIVE_BUSINESS_KEY = "easy-invoice-local-active-business-id";
@@ -15,7 +22,79 @@ export type SavedBusiness = {
   email: string;
   phone: string;
   tax_id: string;
-};
+} & DocumentNumbering;
+
+export function suggestBusinessInvoicePrefix(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return defaultDocumentNumbering.invoice_prefix;
+  if (words.length === 1) {
+    const token = words[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    return token.slice(0, 4) || defaultDocumentNumbering.invoice_prefix;
+  }
+  const initials = words
+    .map((w) => w.replace(/[^a-zA-Z0-9]/g, "")[0] ?? "")
+    .join("")
+    .toUpperCase();
+  return initials.slice(0, 4) || defaultDocumentNumbering.invoice_prefix;
+}
+
+function defaultBusinessNumbering(name = ""): DocumentNumbering {
+  const invoicePrefix = suggestBusinessInvoicePrefix(name);
+  return {
+    invoice_prefix: invoicePrefix,
+    proforma_prefix: `${invoicePrefix}P`,
+    receipt_prefix: `${invoicePrefix}R`,
+    next_invoice_number: 1,
+    next_proforma_number: 1,
+    next_receipt_number: 1,
+  };
+}
+
+export function normalizeBusiness(
+  business: Partial<SavedBusiness> & Pick<SavedBusiness, "id">,
+): SavedBusiness {
+  const invoicePrefix =
+    business.invoice_prefix?.trim() ||
+    suggestBusinessInvoicePrefix(business.name ?? "");
+  const numberingDefaults = defaultBusinessNumbering(business.name ?? "");
+  return {
+    id: business.id,
+    name: business.name ?? "",
+    address: business.address ?? "",
+    email: business.email ?? "",
+    phone: business.phone ?? "",
+    tax_id: business.tax_id ?? "",
+    invoice_prefix: invoicePrefix,
+    proforma_prefix:
+      business.proforma_prefix?.trim() ||
+      numberingDefaults.proforma_prefix,
+    receipt_prefix:
+      business.receipt_prefix?.trim() ||
+      numberingDefaults.receipt_prefix,
+    next_invoice_number: business.next_invoice_number ?? 1,
+    next_proforma_number: business.next_proforma_number ?? 1,
+    next_receipt_number: business.next_receipt_number ?? 1,
+  };
+}
+
+export function getBusinessById(id: string): SavedBusiness | null {
+  return listBusinesses().find((b) => b.id === id) ?? null;
+}
+
+export function assignBusinessDocumentNumber(
+  business: SavedBusiness,
+  kind: DocumentKind,
+): { number: string; business: SavedBusiness } {
+  const assigned = assignDocumentNumber(business, kind);
+  return { number: assigned.number, business: assigned.settings };
+}
+
+export function previewBusinessDocumentNumber(
+  business: SavedBusiness | null | undefined,
+  kind: DocumentKind,
+): string {
+  return previewDocumentNumber(business, kind);
+}
 
 export type SavedBuyer = {
   id: string;
@@ -60,26 +139,17 @@ function writeJson(key: string, value: unknown) {
 function migrateLegacyBusiness(): SavedBusiness[] {
   const legacy = readJson<Record<string, string> | null>(LEGACY_SETTINGS_KEY, null);
   if (!legacy?.seller_name && !legacy?.seller_address) {
-    return [
-      {
-        id: crypto.randomUUID(),
-        name: "My Business",
-        address: "",
-        email: "",
-        phone: "",
-        tax_id: "",
-      },
-    ];
+    return [normalizeBusiness({ id: crypto.randomUUID(), name: "My Business" })];
   }
   return [
-    {
+    normalizeBusiness({
       id: crypto.randomUUID(),
       name: legacy.seller_name || "My Business",
       address: legacy.seller_address || "",
       email: legacy.seller_email || "",
       phone: legacy.seller_phone || "",
       tax_id: legacy.seller_tax_id || "",
-    },
+    }),
   ];
 }
 
@@ -89,6 +159,30 @@ export function listBusinesses(): SavedBusiness[] {
     businesses = migrateLegacyBusiness();
     writeJson(BUSINESSES_KEY, businesses);
     writeJson(ACTIVE_BUSINESS_KEY, businesses[0].id);
+  } else {
+    const org = loadLocalSettings();
+    const normalized = businesses.map((b, index) => {
+      const isLegacy = b.invoice_prefix === undefined;
+      if (isLegacy && index === 0) {
+        return normalizeBusiness({
+          ...b,
+          invoice_prefix: org.invoice_prefix,
+          proforma_prefix: org.proforma_prefix,
+          receipt_prefix: org.receipt_prefix,
+          next_invoice_number: org.next_invoice_number,
+          next_proforma_number: org.next_proforma_number,
+          next_receipt_number: org.next_receipt_number,
+        });
+      }
+      return normalizeBusiness(b);
+    });
+    const changed = normalized.some(
+      (b, i) => JSON.stringify(b) !== JSON.stringify(businesses[i]),
+    );
+    if (changed) {
+      businesses = normalized;
+      writeJson(BUSINESSES_KEY, businesses);
+    }
   }
   return businesses;
 }
@@ -129,34 +223,36 @@ export function businessToSeller(b: SavedBusiness | null): SellerInfo {
 }
 
 export function sellerToBusiness(seller: SellerInfo, id?: string): SavedBusiness {
-  return {
+  return normalizeBusiness({
     id: id ?? crypto.randomUUID(),
     name: seller.seller_name,
     address: seller.seller_address,
     email: seller.seller_email,
     phone: seller.seller_phone,
     tax_id: seller.seller_tax_id,
-  };
+  });
 }
 
 export function upsertBusiness(business: SavedBusiness): SavedBusiness {
+  const saved = normalizeBusiness(business);
   const all = listBusinesses();
-  const idx = all.findIndex((b) => b.id === business.id);
-  if (idx >= 0) all[idx] = business;
-  else all.push(business);
+  const idx = all.findIndex((b) => b.id === saved.id);
+  if (idx >= 0) all[idx] = saved;
+  else all.push(saved);
   writeJson(BUSINESSES_KEY, all);
-  return business;
+  return saved;
 }
 
 export function addBusiness(name = "New Business"): SavedBusiness {
-  const business: SavedBusiness = {
+  const business = normalizeBusiness({
     id: crypto.randomUUID(),
     name,
     address: "",
     email: "",
     phone: "",
     tax_id: "",
-  };
+    ...defaultBusinessNumbering(name),
+  });
   upsertBusiness(business);
   setActiveBusinessId(business.id);
   return business;
@@ -330,14 +426,18 @@ export function recordDocumentCatalog(
   seller: SellerInfo,
   businessId: string,
 ) {
-  upsertBusiness({
-    id: businessId,
-    name: seller.seller_name,
-    address: seller.seller_address,
-    email: seller.seller_email,
-    phone: seller.seller_phone,
-    tax_id: seller.seller_tax_id,
-  });
+  const existing = getBusinessById(businessId);
+  upsertBusiness(
+    normalizeBusiness({
+      ...(existing ?? { id: businessId, name: seller.seller_name }),
+      id: businessId,
+      name: seller.seller_name,
+      address: seller.seller_address,
+      email: seller.seller_email,
+      phone: seller.seller_phone,
+      tax_id: seller.seller_tax_id,
+    }),
+  );
 
   if (form.buyer_name.trim()) {
     upsertBuyer({

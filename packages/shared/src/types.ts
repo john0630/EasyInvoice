@@ -4,6 +4,8 @@ export type PaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
 export type TemplateId = "classic" | "minimal" | "modern";
 
+export type DocumentImportSource = "ledger";
+
 export interface LineItemInput {
   description: string;
   quantity: number;
@@ -39,6 +41,7 @@ export interface DocumentFormData {
   payment_method?: PaymentMethod;
   amount_paid?: number;
   source_document_id?: string;
+  import_source?: DocumentImportSource | null;
   line_items: LineItemInput[];
 }
 

@@ -15,6 +15,7 @@ import {
   getLocalDocument,
   formFromLocal,
   deleteLocalDocument,
+  deleteLocalDocuments,
   listLocalDocuments,
   type LocalDocument,
 } from "@/lib/localStorage";
@@ -92,7 +93,7 @@ export function useDocumentOps(
       const totals = calculateTotals(form.line_items);
 
       if (!isSupabaseConfigured || orgId === "local") {
-        return saveLocalDocument(form, seller, documentId, businessId, settings);
+        return saveLocalDocument(form, seller, documentId, businessId);
       }
 
       let number = form.number;
@@ -129,6 +130,7 @@ export function useDocumentOps(
         payment_method: form.payment_method ?? null,
         amount_paid: form.amount_paid ?? totals.grand_total,
         source_document_id: form.source_document_id || null,
+        import_source: form.import_source ?? null,
         subtotal: totals.subtotal,
         tax_total: totals.tax_total,
         discount_total: totals.discount_total,
@@ -194,6 +196,19 @@ export function useDocumentOps(
     [orgId],
   );
 
+  const removeDocuments = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
+      if (!isSupabaseConfigured || orgId === "local") {
+        deleteLocalDocuments(ids);
+        return;
+      }
+      const { error } = await supabase.from("documents").delete().in("id", ids);
+      if (error) throw error;
+    },
+    [orgId],
+  );
+
   const duplicateAs = useCallback(
     async (sourceId: string, targetKind: DocumentKind) => {
       const source = await loadDocument(sourceId);
@@ -213,9 +228,14 @@ export function useDocumentOps(
         duplicate.amount_paid = totals.grand_total;
       }
 
-      return saveDocument(duplicate);
+      const businessId =
+        !isSupabaseConfigured || orgId === "local"
+          ? getLocalDocument(sourceId)?.business_id
+          : undefined;
+
+      return saveDocument(duplicate, undefined, businessId);
     },
-    [loadDocument, saveDocument],
+    [loadDocument, saveDocument, orgId],
   );
 
   return {
@@ -223,6 +243,7 @@ export function useDocumentOps(
     listDocuments,
     saveDocument,
     removeDocument,
+    removeDocuments,
     duplicateAs,
     seller,
   };
