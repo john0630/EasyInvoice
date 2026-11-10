@@ -43,3 +43,6 @@ supabase/.temp/
 
 # Optional: uncomment if you don't commit local Supabase config overrides
 # supabase/.env
+
+# Local-mode durable JSON store (localhost file backend)
+/data/
