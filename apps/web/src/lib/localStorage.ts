@@ -11,6 +11,7 @@ import {
   getBusinessById,
   upsertBusiness,
 } from "./localCatalog";
+import { schedulePersist } from "./localDataSync";
 
 const STORAGE_KEY = "easy-invoice-local-docs";
 
@@ -31,6 +32,7 @@ function loadAll(): LocalDocument[] {
 
 function saveAll(docs: LocalDocument[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+  schedulePersist();
 }
 
 export function listLocalDocuments(): LocalDocument[] {

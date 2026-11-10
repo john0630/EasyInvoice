@@ -7,6 +7,7 @@ import {
   previewDocumentNumber,
   type DocumentNumbering,
 } from "./localSettings";
+import { schedulePersist } from "./localDataSync";
 
 const BUSINESSES_KEY = "easy-invoice-local-businesses";
 const ACTIVE_BUSINESS_KEY = "easy-invoice-local-active-business-id";
@@ -134,6 +135,7 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value));
+  schedulePersist();
 }
 
 function migrateLegacyBusiness(): SavedBusiness[] {
@@ -196,6 +198,7 @@ export function getActiveBusinessId(): string {
 
 export function setActiveBusinessId(id: string) {
   localStorage.setItem(ACTIVE_BUSINESS_KEY, id);
+  schedulePersist();
 }
 
 export function getActiveBusiness(): SavedBusiness | null {

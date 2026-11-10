@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "sonner";
 import { Layout } from "@/components/Layout";
 import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -14,7 +13,6 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 export default function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-right" richColors />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />

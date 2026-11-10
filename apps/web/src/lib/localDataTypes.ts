@@ -109,8 +109,19 @@ export function snapshotFromBrowserStorage(
   const notes = parseJsonUnknown(getItem(BROWSER_KEYS.notes));
   const settings = parseJsonUnknown(getItem(BROWSER_KEYS.settings));
   const activeRaw = getItem(BROWSER_KEYS.activeBusinessId);
-  const activeBusinessId =
-    activeRaw && activeRaw.trim() !== "" ? activeRaw : null;
+  let activeBusinessId: string | null = null;
+  if (activeRaw && activeRaw.trim() !== "") {
+    if (activeRaw.startsWith('"')) {
+      try {
+        const parsed = JSON.parse(activeRaw) as unknown;
+        activeBusinessId = typeof parsed === "string" ? parsed : activeRaw;
+      } catch {
+        activeBusinessId = activeRaw;
+      }
+    } else {
+      activeBusinessId = activeRaw;
+    }
+  }
 
   return {
     documents: Array.isArray(documents) ? documents : [],

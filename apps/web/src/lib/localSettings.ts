@@ -1,5 +1,6 @@
 import type { DocumentKind } from "@easy-invoice/shared";
 import type { OrganizationSettings } from "./supabase";
+import { schedulePersist } from "./localDataSync";
 
 export const DEFAULT_CURRENCY = "MYR";
 
@@ -51,6 +52,7 @@ export function loadLocalSettings(): OrganizationSettings {
 
 export function saveLocalSettings(settings: OrganizationSettings) {
   localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(settings));
+  schedulePersist();
 }
 
 export function formatDocumentNumber(prefix: string, seq: number): string {
